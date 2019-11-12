@@ -1,0 +1,18 @@
+#!/usr/bin/make -f
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+export DH_GOPKG := github.com/danos/encoding/rfc7951
+
+%:
+	dh $@ --buildsystem=golang --with=golang
+
+override_dh_auto_build: vet
+	dh_auto_build
+
+# We do not vet vendor code
+vet:
+	if go doc cmd/vet >/dev/null 2>&1; then \
+		go tool vet -structtags=false $$(find . -type f -name \*.go | \
+			xargs dirname | sort -u | grep -v "/vendor/"); \
+	fi

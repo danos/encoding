@@ -1,0 +1,23 @@
+Source: golang-github-danos-encoding-rfc7951
+Section: devel
+Priority: optional
+Maintainer: Vyatta Package Maintainers <DL-vyatta-help@att.com>
+Build-Depends: debhelper (>= 9),
+ dh-golang,
+ golang-go (>= 2:1.4),
+ golang-jsouthworth-dyn-dev,
+ golang-jsouthworth-immutable-dev,
+ golang-jsouthworth-try-dev,
+Standards-Version: 3.9.8
+
+Package: golang-github-danos-encoding-rfc7951-dev
+Architecture: all
+Depends:
+ golang-jsouthworth-dyn-dev,
+ golang-jsouthworth-immutable-dev,
+ golang-jsouthworth-try-dev,
+ ${misc:Depends}
+Built-Using: ${misc:Built-Using}
+Description: RFC7951 JSON encoder and decoder
+ Development files for encoding and decoding RFC7951 JSON
+
