@@ -724,7 +724,7 @@ func TestTreeRange(t *testing.T) {
 				return true
 			}).(bool)
 		})
-		if count == len(rangeLeaves) {
+		if count >= len(rangeLeaves) {
 			t.Fatal("accessed too many values")
 		}
 	})
@@ -764,7 +764,7 @@ func TestTreeRange(t *testing.T) {
 				return true
 			}).(bool)
 		})
-		if count == len(rangeLeaves) {
+		if count >= len(rangeLeaves) {
 			t.Fatal("accessed too many values")
 		}
 	})
@@ -773,7 +773,7 @@ func TestTreeRange(t *testing.T) {
 		tree.Range(func(iid *InstanceID) {
 			count++
 		})
-		if count < len(rangeLeaves) {
+		if count != len(TESTOBJ_STR) {
 			t.Fatal("didn't access all the values")
 		}
 	})
@@ -781,12 +781,12 @@ func TestTreeRange(t *testing.T) {
 		count := 0
 		tree.Range(func(iid *InstanceID) bool {
 			if iid.String() == "/module-v1:leaf-list[2]" {
-				return false
+				return true
 			}
 			count++
 			return true
 		})
-		if count == len(rangeLeaves) {
+		if count >= len(TESTOBJ_STR) {
 			t.Fatal("accessed too many values")
 		}
 	})
@@ -795,7 +795,7 @@ func TestTreeRange(t *testing.T) {
 		tree.Range(func(iid string) {
 			count++
 		})
-		if count < len(rangeLeaves) {
+		if count != len(TESTOBJ_STR) {
 			t.Fatal("didn't access all the values")
 		}
 	})
@@ -808,7 +808,7 @@ func TestTreeRange(t *testing.T) {
 			count++
 			return true
 		})
-		if count == len(rangeLeaves) {
+		if count >= len(TESTOBJ_STR) {
 			t.Fatal("accessed too many values")
 		}
 	})
@@ -837,7 +837,7 @@ func TestTreeRange(t *testing.T) {
 				return true
 			}).(bool)
 		})
-		if count == len(rangeLeaves) {
+		if count >= len(rangeLeaves) {
 			t.Fatal("accessed too many values")
 		}
 	})
@@ -853,7 +853,7 @@ func TestTreeRange(t *testing.T) {
 				return true
 			}).(bool)
 		})
-		if count == len(rangeLeaves) {
+		if count >= len(rangeLeaves) {
 			t.Fatal("accessed too many values")
 		}
 	})

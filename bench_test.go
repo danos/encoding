@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 //
 // SPDX-License-Identifier: BSD-3-Clause
-//
+
 // Large data benchmark.
 // The JSON data is a summary of agl's changes in the
 // go, webkit, and chromium open source projects.

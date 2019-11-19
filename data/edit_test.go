@@ -1,6 +1,7 @@
-// Copyright (c) 2019, AT&T Intellectual Property. All rights reserved.
+// Copyright (c) 2019, AT&T Intellectual Property.
 //
 // SPDX-License-Identifier: MPL-2.0
+
 package data
 
 import (
