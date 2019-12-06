@@ -4,12 +4,12 @@ Files: *.go
 Copyright: 2010-2011,2013, The Go Authors.
 License: BSD-3-Clause
 
-Files:decode.go decode_test.go encode.go encode_test.go stream.go stream_test.go
+Files:rfc7951/decode.go rfc7951/decode_test.go rfc7951/encode.go rfc7951/encode_test.go rfc7951/stream.go rfc7951/stream_test.go
 Copyright: 2017-2019, AT&T Intellectual Property.
            2010-2011, The Go Authors.
 License: MPL-2.0 and BSD-3-Clause
 
-Files: rfc7951_test.go data/*
+Files: rfc7951/rfc7951_test.go rfc7951/data/*
 Copyright: 2017-2019, AT&T Intellectual Property.
 License: MPL-2.0
 

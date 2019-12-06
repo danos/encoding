@@ -2,7 +2,7 @@
 
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
-export DH_GOPKG := github.com/danos/encoding/rfc7951
+export DH_GOPKG := github.com/danos/encoding
 
 %:
 	dh $@ --buildsystem=golang --with=golang

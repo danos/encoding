@@ -1,4 +1,4 @@
-Source: golang-github-danos-encoding-rfc7951
+Source: golang-github-danos-encoding
 Section: devel
 Priority: optional
 Maintainer: Vyatta Package Maintainers <DL-vyatta-help@att.com>

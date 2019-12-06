@@ -1,5 +1,5 @@
 debhelper-build-stamp
-golang-vyatta-encoding-rfc7951-dev/
+golang-vyatta-encoding-dev/
 *.debhelper.*
 *.substvars
 tmp/
