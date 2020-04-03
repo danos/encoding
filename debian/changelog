@@ -1,8 +1,9 @@
-golang-github-danos-encoding (0.8) UNRELEASED; urgency=medium
+golang-github-danos-encoding (0.8) unstable; urgency=medium
 
+  [ James Wheatley ]
   * Rename package
 
- -- James Wheatley <jammy@att.com>  Fri, 06 Dec 2019 13:57:28 +0000
+ -- William Ivory <william.ivory@intl.att.com>  Fri, 03 Apr 2020 11:38:30 +0100
 
 golang-github-danos-encoding-rfc7951 (0.7) unstable; urgency=medium
 
