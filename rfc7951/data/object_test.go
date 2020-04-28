@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2019, AT&T Intellectual Property.
+// Copyright (c) 2018-2020, AT&T Intellectual Property.
 // All rights reserved.
 //
 // SPDX-License-Identifier: MPL-2.0
@@ -387,7 +387,8 @@ func TestObjectMarshalRFC7951(t *testing.T) {
 	var buf bytes.Buffer
 	v.marshalRFC7951(&buf, "")
 	o := objectNew()
-	o.unmarshalRFC7951(buf.Bytes(), "")
+	o.unmarshalRFC7951(buf.Bytes(), "",
+		stringInternerNew(), valueInternerNew())
 	got := ValueNew(o)
 	expected := `{"module-v1:bar":"baz","module-v2:baz":[{"quux":"foo","baz":"bar"},{"quux":"bar","baz":"foo"}],"module-v1:foo":{"negative-uint64":"-1234","nil":null,"false":false,"plus-in-string":"+foobar","true":true,"empty":[null],"two.one":"2.1","negative-in-dotted-string":"-2.fooboar","negative":-2,"bar":{"quux":"quuz","baz":["quux","foo"]},"negative-in-string":"-foobar","plus-in-dotted-string":"+2.foobar","negative-float":"-2.4","baz":"quux","positive-float":"+2.3","one":1,"empty-string":"","dotted-string":"192.168.1.1/24","positive":"2","uint64":"1234"}}`
 	tree := TreeNew()
@@ -424,7 +425,8 @@ func TestEscapedStringMarshalRFC7951(t *testing.T) {
 	var buf bytes.Buffer
 	v.marshalRFC7951(&buf, "")
 	o := objectNew()
-	o.unmarshalRFC7951(buf.Bytes(), "")
+	o.unmarshalRFC7951(buf.Bytes(), "",
+		stringInternerNew(), valueInternerNew())
 	got := ValueNew(o)
 	expected := `{"module-v2:baz":[{"quux":"\"foo\"","baz":"bar"},{"quux":"\"bar\"","baz":"foo"}],"module-v1:foo":{"empty-string":"","one-quote":"\"","quotes-in-string":"\"foo\" \"bar\"","backslash-in-string":"\\foo\\bar","newline-in-string":"foo\nbar","tab-in-string":"\tfoo\tbar"}}`
 	tree := TreeNew()

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2019, AT&T Intellectual Property.
+// Copyright (c) 2018-2020, AT&T Intellectual Property.
 // All rights reserved.
 //
 // SPDX-License-Identifier: MPL-2.0
@@ -639,12 +639,12 @@ func (val *Value) String() string {
 	return fmt.Sprintf("%v", val.data)
 }
 
-func (val *Value) belongsTo(moduleName string) *Value {
+func (val *Value) belongsTo(orig *Value, moduleName string) *Value {
 	switch v := val.data.(type) {
 	case interface {
-		belongsTo(string) *Value
+		belongsTo(*Value, string) *Value
 	}:
-		return v.belongsTo(moduleName)
+		return v.belongsTo(val, moduleName)
 	default:
 		return val
 	}
@@ -675,23 +675,30 @@ func (val *Value) MarshalRFC7951() ([]byte, error) {
 
 // UnmarshalRFC7951 extracts a value from an rfc7951 encoded value.
 func (val *Value) UnmarshalRFC7951(msg []byte) error {
-	return val.unmarshalRFC7951(msg, "")
+	strs := stringInternerNew()
+	vals := valueInternerNew()
+	return val.unmarshalRFC7951(msg, "", strs, vals)
 }
-func (val *Value) unmarshalRFC7951(msg []byte, module string) error {
+
+func (val *Value) unmarshalRFC7951(
+	msg []byte, module string,
+	strs *stringInterner,
+	vals *valueInterner,
+) error {
 	if len(msg) == 0 {
 		return nil
 	}
 	switch c := msg[0]; c {
 	case '{':
 		obj := objectNew()
-		err := obj.unmarshalRFC7951(msg, module)
+		err := obj.unmarshalRFC7951(msg, module, strs, vals)
 		if err != nil {
 			return err
 		}
 		val.data = obj
 	case '[':
 		arr := arrayNew()
-		err := arr.unmarshalRFC7951(msg, module)
+		err := arr.unmarshalRFC7951(msg, module, strs, vals)
 		if err != nil {
 			return err
 		}
@@ -714,6 +721,7 @@ func (val *Value) unmarshalRFC7951(msg []byte, module string) error {
 		if err != nil {
 			return err
 		}
+		item = strs.Intern(item)
 		if len(item) == 0 {
 			val.data = item
 			return nil

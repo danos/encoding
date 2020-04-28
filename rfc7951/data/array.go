@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2019, AT&T Intellectual Property.
+// Copyright (c) 2018-2020, AT&T Intellectual Property.
 // All rights reserved.
 //
 // SPDX-License-Identifier: MPL-2.0
@@ -225,9 +225,9 @@ func (arr *Array) toData() interface{} {
 	return out
 }
 
-func (arr *Array) belongsTo(moduleName string) *Value {
+func (arr *Array) belongsTo(orig *Value, moduleName string) *Value {
 	if moduleName == arr.module {
-		return ValueNew(arr)
+		return orig
 	}
 	out := arr.copy()
 	out.module = moduleName
@@ -246,7 +246,7 @@ func (arr *Array) belongsTo(moduleName string) *Value {
 }
 
 func (arr *Array) adaptValue(val *Value) *Value {
-	return val.belongsTo(arr.module)
+	return val.belongsTo(val, arr.module)
 }
 
 func (arr *Array) copy() *Array {
@@ -317,7 +317,11 @@ func (arr *Array) marshalRFC7951(buf *bytes.Buffer, module string) error {
 	return nil
 }
 
-func (arr *Array) unmarshalRFC7951(msg []byte, module string) error {
+func (arr *Array) unmarshalRFC7951(
+	msg []byte, module string,
+	strs *stringInterner,
+	vals *valueInterner,
+) error {
 	var a []rfc7951.RawMessage
 	rfc7951.Unmarshal(msg, &a)
 	arr.module = module
@@ -325,8 +329,9 @@ func (arr *Array) unmarshalRFC7951(msg []byte, module string) error {
 		func(store *vector.TVector) *vector.TVector {
 			for _, v := range a {
 				val := valueNew(nil)
-				val.unmarshalRFC7951(v, arr.module)
+				val.unmarshalRFC7951(v, arr.module, strs, vals)
 				val = arr.adaptValue(val)
+				val = vals.Intern(val)
 				store = store.Append(val)
 			}
 			return store

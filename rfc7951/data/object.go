@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2019, AT&T Intellectual Property.
+// Copyright (c) 2018-2020, AT&T Intellectual Property.
 // All rights reserved.
 //
 // SPDX-License-Identifier: MPL-2.0
@@ -250,14 +250,14 @@ func (obj *Object) toData() interface{} {
 
 func (obj *Object) adaptValue(k string, val *Value) (string, *Value) {
 	module, _ := obj.parseKey(k)
-	val = val.belongsTo(module)
+	val = val.belongsTo(val, module)
 	key := obj.adaptKey(k)
 	return key, val
 }
 
-func (obj *Object) belongsTo(moduleName string) *Value {
+func (obj *Object) belongsTo(orig *Value, moduleName string) *Value {
 	if moduleName == obj.module {
-		return ValueNew(obj)
+		return orig
 	}
 	oldModule := obj.module
 	new := obj.copy()
@@ -379,7 +379,11 @@ func (obj *Object) marshalRFC7951(buf *bytes.Buffer, module string) error {
 	return nil
 }
 
-func (obj *Object) unmarshalRFC7951(msg []byte, module string) error {
+func (obj *Object) unmarshalRFC7951(
+	msg []byte, module string,
+	strs *stringInterner,
+	vals *valueInterner,
+) error {
 	// This can't be fully immutable, the caller has to ensure
 	// the object isn't used until unmarshal is finished, this
 	// shouldn't be a problem in practice...
@@ -391,8 +395,11 @@ func (obj *Object) unmarshalRFC7951(msg []byte, module string) error {
 			for k, v := range m {
 				val := valueNew(nil)
 				module, _ := obj.parseKey(k)
-				val.unmarshalRFC7951(v, module)
+				module = strs.Intern(module)
+				val.unmarshalRFC7951(v, module, strs, vals)
 				k, v := obj.adaptValue(k, val)
+				k = strs.Intern(k)
+				v = vals.Intern(v)
 				store = store.Assoc(k, v)
 			}
 			return store
