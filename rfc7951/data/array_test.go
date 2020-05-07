@@ -280,3 +280,87 @@ func TestArraySortCompare(t *testing.T) {
 		t.Fatalf("expected: %s\ngot: %s\n", expected, got)
 	}
 }
+
+func TestTArray(t *testing.T) {
+	list := TESTOBJ.At("module-v1:leaf-list").AsArray()
+	t.Run("Append", func(t *testing.T) {
+		new := list.Transform(func(a *TArray) {
+			a.Append(8)
+		})
+		if new.Length() != list.Length()+1 {
+			t.Fatal("append failed")
+		}
+	})
+	t.Run("Assoc", func(t *testing.T) {
+		new := list.Transform(func(a *TArray) {
+			a.Assoc(0, 2)
+		})
+		if new.At(0).AsInt32() != 2 {
+			t.Fatal("assoc failed")
+		}
+	})
+	t.Run("At", func(t *testing.T) {
+		list.Transform(func(a *TArray) {
+			if a.At(2).AsInt32() != 3 {
+				t.Fatal("at failed")
+			}
+		})
+	})
+	t.Run("Contains", func(t *testing.T) {
+		list.Transform(func(a *TArray) {
+			if !a.Contains(0) {
+				t.Fatal("didn't find expected value")
+			}
+			if a.Contains(-1) {
+				t.Fatal("found invalid value")
+			}
+		})
+	})
+	t.Run("Delete", func(t *testing.T) {
+		got := list.Transform(func(a *TArray) {
+			a.Delete(0)
+		})
+		expected := list.Delete(0)
+		if !dyn.Equal(expected, got) {
+			t.Fatalf("expected: %s\ngot: %s\n", expected, got)
+		}
+	})
+	t.Run("Find", func(t *testing.T) {
+		list.Transform(func(a *TArray) {
+			v, ok := a.Find(0)
+			if !ok || v.AsInt32() != 1 {
+				t.Fatal("didn't find expected value")
+			}
+			_, ok = a.Find(-1)
+			if ok {
+				t.Fatal("found invalid value")
+			}
+		})
+	})
+	t.Run("Length", func(t *testing.T) {
+		list.Transform(func(a *TArray) {
+			if a.Length() != list.Length() {
+				t.Fatal("length of transient array not as expected")
+			}
+		})
+	})
+	t.Run("Sort", func(t *testing.T) {
+		expected := ArrayWith(1, 2, 3, 4, 5, 6, 7, 8)
+		got := ArrayWith(8, 7, 6, 5, 4, 3, 2, 1).
+			Transform(func(a *TArray) {
+				a.Sort()
+			})
+		if !dyn.Equal(expected, got) {
+			t.Fatalf("expected: %s\ngot: %s\n", expected, got)
+		}
+	})
+	t.Run("String", func(t *testing.T) {
+		expected := "[1,2,3,4,5,6,7]"
+		list.Transform(func(a *TArray) {
+			got := a.String()
+			if got != expected {
+				t.Fatalf("expected: %s\ngot: %s\n", expected, got)
+			}
+		})
+	})
+}

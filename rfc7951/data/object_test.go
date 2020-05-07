@@ -504,3 +504,82 @@ func TestObjectString(t *testing.T) {
 			tree.Diff(orig))
 	}
 }
+
+func TestTObject(t *testing.T) {
+	t.Run("At", func(t *testing.T) {
+		TESTOBJ.Transform(func(obj *TObject) {
+			if obj.At("module-v1:leaf").String() != "foo" {
+				t.Fatal("didn't retrieve expected value")
+			}
+			if obj.At("module-v2:leaf") != nil {
+				t.Fatal("didn't retrieve expected value")
+			}
+		})
+	})
+	t.Run("Assoc", func(t *testing.T) {
+		new := TESTOBJ.Transform(func(obj *TObject) {
+			obj.Assoc("module-v1:leaf", "bar")
+		})
+		if new.At("module-v1:leaf") == TESTOBJ.At("module-v1:leaf") {
+			t.Fatal("object updated incorrectly")
+		}
+		if new.At("module-v1:leaf").String() != "bar" {
+			t.Fatal("object didn't update correctly")
+		}
+
+	})
+	t.Run("Contains", func(t *testing.T) {
+		TESTOBJ.Transform(func(obj *TObject) {
+			if !obj.Contains("module-v1:leaf") {
+				t.Fatal("didn't find expected value")
+			}
+			if obj.Contains("module-v2:leaf") {
+				t.Fatal("found invalid value")
+			}
+		})
+	})
+	t.Run("Delete", func(t *testing.T) {
+		new := TESTOBJ.Transform(func(obj *TObject) {
+			obj.Delete("module-v1:leaf")
+		})
+		if new.Contains("module-v1:leaf") {
+			t.Fatal("delete failed to remove value")
+		}
+	})
+	t.Run("Equal", func(t *testing.T) {
+		TESTOBJ.Transform(func(obj1 *TObject) {
+			TESTOBJ.Transform(func(obj2 *TObject) {
+				if !obj1.Equal(obj2) {
+					t.Fatal("object not equal to its self")
+				}
+			})
+		})
+		TESTOBJ.Transform(func(obj1 *TObject) {
+			obj1.Delete("module-v1:leaf")
+			TESTOBJ.Transform(func(obj2 *TObject) {
+				if obj1.Equal(obj2) {
+					t.Fatal("object equal to different object")
+				}
+			})
+		})
+	})
+	t.Run("Find", func(t *testing.T) {
+		TESTOBJ.Transform(func(obj *TObject) {
+			v, ok := obj.Find("module-v1:leaf")
+			if !ok || v.String() != "foo" {
+				t.Fatal("didn't find expected value")
+			}
+			_, ok = obj.Find("module-v2:leaf")
+			if ok {
+				t.Fatal("found invalid value")
+			}
+		})
+	})
+	t.Run("Length", func(t *testing.T) {
+		TESTOBJ.Transform(func(obj *TObject) {
+			if obj.Length() != TESTOBJ.Length() {
+				t.Fatal("length of transient object not as expected")
+			}
+		})
+	})
+}

@@ -312,24 +312,19 @@ func (obj *Object) copy() *Object {
 // not remove non-existant keys.
 func (obj *Object) merge(new *Value) *Value {
 	return new.Perform(func(n *Object) *Value {
-		out := obj.copy()
-		out.store = out.store.Transform(
-			func(store *hashmap.TMap) *hashmap.TMap {
-				obj.Range(func(key string, val *Value) {
-					k, v := out.adaptValue(key, val)
-					if n.Contains(k) {
-						store = store.Assoc(k,
-							v.Merge(n.At(k)))
-					}
-				})
-				n.Range(func(key string, val *Value) {
-					k, v := out.adaptValue(key, val)
-					if !store.Contains(k) {
-						store = store.Assoc(k, v)
-					}
-				})
-				return store
+		out := obj.Transform(func(out *TObject) {
+			obj.Range(func(key string, val *Value) {
+				if n.Contains(key) {
+					out = out.Assoc(key,
+						val.Merge(n.At(key)))
+				}
 			})
+			n.Range(func(key string, val *Value) {
+				if !obj.Contains(key) {
+					out = out.Assoc(key, val)
+				}
+			})
+		})
 		return ValueNew(out)
 	}, func(_ interface{}) *Value {
 		// By default just return the original object; can't merge
@@ -439,4 +434,178 @@ func (obj *Object) diff(new *Value, path *InstanceID) []EditEntry {
 		}
 	})
 	return out
+}
+
+// Transform executes the provided function against a mutable
+// transient object to provide a faster, less memory intensive, object
+// editing mechanism.
+func (obj *Object) Transform(fn func(*TObject)) *Object {
+	tobj := &TObject{
+		orig:  obj,
+		store: obj.store.AsTransient(),
+	}
+	fn(tobj)
+	out := obj.copy()
+	out.store = tobj.store.AsPersistent()
+	return out
+}
+
+// TObject is a transient object that may be used to perform
+// transformations on an object in a fast mutable fashion. This can
+// only be accessed via the (*Object).Transform method. Care should be
+// taken not to share this among threads as its values are mutable.
+type TObject struct {
+	orig  *Object
+	store *hashmap.TMap
+}
+
+// Assoc associates a new value with the key. The key may be either
+// 'module:key' or just key if the module is the same as the containing
+// object's module.
+func (obj *TObject) Assoc(key string, value interface{}) *TObject {
+	k, v := obj.orig.adaptValue(key, ValueNew(value))
+	obj.store = obj.store.Assoc(k, v)
+	return obj
+}
+
+// At returns the Value at the key's location or nil if it doesn't
+// exist. The key may be either 'module:key' or just key if the module
+// is the same as the containing object's module.
+func (obj *TObject) At(key string) *Value {
+	k := obj.orig.adaptKey(key)
+	out, ok := obj.store.Find(k)
+	if !ok {
+		return nil
+	}
+	return out.(*Value)
+}
+
+// Contains returns true if the key exists in the object. The key may
+// be either 'module:key' or just key if the module is the same as the
+// containing object's module.
+func (obj *TObject) Contains(key string) bool {
+	k := obj.orig.adaptKey(key)
+	return obj.store.Contains(k)
+}
+
+// Delete removes a key from the object. The key may be either
+// 'module:key' or just key if the module is the same as the
+// containing object's module.
+func (obj *TObject) Delete(key string) *TObject {
+	k := obj.orig.adaptKey(key)
+	obj.store = obj.store.Delete(k)
+	return obj
+}
+
+// Equal implements equality for objects. An object is equal to
+// another object if all their keys contains equal values. Equality
+// checks are linear with respect to the number of keys.
+func (obj *TObject) Equal(other interface{}) bool {
+	oo, isObject := other.(*TObject)
+	return isObject &&
+		oo.orig.module == obj.orig.module &&
+		oo.store.Length() == obj.store.Length() &&
+		equal(oo.store, obj.store)
+}
+
+// Find returns the value at the key or nil if it doesn't exist and
+// whether the key was in the object.
+func (obj *TObject) Find(key string) (*Value, bool) {
+	k := obj.orig.adaptKey(key)
+	out, ok := obj.store.Find(k)
+	if !ok {
+		return nil, ok
+	}
+	return out.(*Value), ok
+}
+
+// Length returns the number of elements in the object.
+func (obj *TObject) Length() int {
+	return obj.store.Length()
+}
+
+// Range iterates over the object's members. Range can take a set of functions
+// matched by type. If the function returns a bool this is treated as a
+// loop terminataion variable if false the loop will terminate.
+//
+//     func(Pair) iterates over Pairs
+//     func(Pair) bool, called with a Pair, terminates the loop on false.
+//     func(string, *Value) iterates over keys and values.
+//     func(string, *Value) bool
+//     func(string) iterates over only the keys
+//     func(string) bool
+//     func(*Value) iterates over only the values
+//     func(*Value bool
+func (obj *TObject) Range(fn interface{}) {
+	switch f := fn.(type) {
+	case func(Pair):
+		fn = func(e hashmap.Entry) bool {
+			f(PairNew(e.Key().(string), e.Value()))
+			return true
+		}
+	case func(Pair) bool:
+		fn = func(e hashmap.Entry) bool {
+			return f(PairNew(e.Key().(string), e.Value()))
+		}
+	case func(string, *Value):
+		fn = func(e hashmap.Entry) bool {
+			f(e.Key().(string), e.Value().(*Value))
+			return true
+		}
+	case func(string, *Value) bool:
+		fn = func(e hashmap.Entry) bool {
+			return f(e.Key().(string), e.Value().(*Value))
+		}
+	case func(*Value):
+		fn = func(e hashmap.Entry) bool {
+			f(e.Value().(*Value))
+			return true
+		}
+	case func(*Value) bool:
+		fn = func(e hashmap.Entry) bool {
+			return f(e.Value().(*Value))
+		}
+	case func(string):
+		fn = func(e hashmap.Entry) bool {
+			f(e.Key().(string))
+			return true
+		}
+	case func(string) bool:
+		fn = func(e hashmap.Entry) bool {
+			return f(e.Key().(string))
+		}
+	default:
+		panic("invalid range function")
+	}
+	obj.store.Range(fn)
+}
+
+// String returns a string representation of the Object.
+func (obj *TObject) String() string {
+	var buf bytes.Buffer
+	obj.marshalRFC7951(&buf, obj.orig.module)
+	return buf.String()
+}
+
+func (obj *TObject) marshalRFC7951(buf *bytes.Buffer, module string) error {
+	buf.WriteByte('{')
+	var n int
+	obj.Range(func(pair Pair) {
+		k := pair.Key()
+		mod, key := obj.orig.parseKey(k)
+		if mod == module {
+			k = key
+		}
+		buf.WriteByte('"')
+		buf.WriteString(k)
+		buf.WriteByte('"')
+		buf.WriteByte(':')
+		pair.Value().marshalRFC7951(buf, mod)
+		if n < obj.Length()-1 {
+			buf.WriteByte(',')
+		}
+		n = n + 1
+	})
+	buf.WriteByte('}')
+	return nil
 }

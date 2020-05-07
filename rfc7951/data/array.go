@@ -262,23 +262,19 @@ func (arr *Array) copy() *Array {
 // not remove non-existant indicies.
 func (arr *Array) merge(new *Value) *Value {
 	return new.Perform(func(n *Array) *Value {
-		out := arr.copy()
-		out.store = out.store.Transform(
-			func(store *vector.TVector) *vector.TVector {
-				arr.Range(func(i int, v *Value) {
-					if n.Contains(i) {
-						store = store.Assoc(i,
-							v.Merge(n.At(i)))
-					}
-				})
-				n.Range(func(i int, v *Value) {
-					if !out.Contains(i) {
-						store = store.Append(
-							out.adaptValue(v))
-					}
-				})
-				return store
+		out := arr.Transform(func(out *TArray) {
+			arr.Range(func(i int, v *Value) {
+				if n.Contains(i) {
+					out = out.Assoc(i,
+						v.Merge(n.At(i)))
+				}
 			})
+			n.Range(func(i int, v *Value) {
+				if !arr.Contains(i) {
+					out = out.Append(v)
+				}
+			})
+		})
 		return ValueNew(out)
 	}, func(_ interface{}) *Value {
 		// By default just return the original array; can't merge
@@ -374,6 +370,20 @@ func (arr *Array) diff(new *Value, path *InstanceID) []EditEntry {
 	return out
 }
 
+// Transform executes the provided function against a mutable
+// transient array to provide a faster, less memory intensive, array
+// editing mechanism.
+func (arr *Array) Transform(fn func(*TArray)) *Array {
+	tarr := &TArray{
+		orig:  arr,
+		store: arr.store.AsTransient(),
+	}
+	fn(tarr)
+	out := arr.copy()
+	out.store = tarr.store.AsPersistent()
+	return out
+}
+
 // Sort sorts an array returning a new array that is sorted.
 // by default sort will use dyn.Compare as the comparison operator
 // this may be overridden using the Compare option.
@@ -431,4 +441,141 @@ func Compare(fn func(a, b *Value) int) SortOption {
 	return func(opts *sortOpts) {
 		opts.compare = fn
 	}
+}
+
+// TArray is a transient array that may be used to perform
+// transformations on an array in a fast mutable fashion. This can
+// only be accessed via the (*Array).Transform method. Care should be
+// taken not to share this among threads as its values are mutable.
+type TArray struct {
+	orig  *Array
+	store *vector.TVector
+}
+
+// Assoc associates the value with the index in the array. If the
+// index is out of bounds the array is padded to that index and the
+// value is associated.
+func (arr *TArray) Assoc(i int, v interface{}) *TArray {
+	arr.store = arr.store.Assoc(i, arr.orig.adaptValue(ValueNew(v)))
+	return arr
+}
+
+// Append adds a new value to the end of the array.
+func (arr *TArray) Append(value interface{}) *TArray {
+	arr.store = arr.store.Append(arr.orig.adaptValue(ValueNew(value)))
+	return arr
+}
+
+// At returns the value at the index of the array, if the index is out
+// of bounds, nil is returned.
+func (arr *TArray) At(index int) *Value {
+	if index >= arr.store.Length() || index < 0 {
+		return nil
+	}
+	return arr.store.At(index).(*Value)
+}
+
+// Contains returns whether the index is in the bounds of the array.
+func (arr *TArray) Contains(index int) bool {
+	return index < arr.store.Length() && index >= 0
+}
+
+// Delete removes an element at the supplied index from the array.
+func (arr *TArray) Delete(index int) *TArray {
+	arr.store = arr.store.Delete(index)
+	return arr
+}
+
+// Find returns the value at the index or nil if it doesn't exist and
+// whether the index was in the array.
+func (arr *TArray) Find(index int) (*Value, bool) {
+	v, ok := arr.store.Find(index)
+	if !ok {
+		return nil, ok
+	}
+	return v.(*Value), ok
+}
+
+// Length returns the number of elements in the array.
+func (arr *TArray) Length() int {
+	return arr.store.Length()
+}
+
+// Range iterates over the object's members. Range can take a set of functions
+// matched by type. If the function returns a bool this is treated as a
+// loop terminataion variable if false the loop will terminate.
+//
+//     func(int, *Value) iterates over indicies and values.
+//     func(int, *Value) bool
+//     func(int) iterates over only the indicies
+//     func(int) bool
+//     func(*Value) iterates over only the values
+//     func(*Value bool
+func (arr *TArray) Range(fn interface{}) {
+	// NOTE: this must be done inline to avoid needing a heap
+	// allocation for the generated closure.
+	switch f := fn.(type) {
+	case func(int, *Value):
+	case func(int, *Value) bool:
+	case func(*Value):
+		fn = func(idx int, val interface{}) bool {
+			f(val.(*Value))
+			return true
+		}
+	case func(*Value) bool:
+		fn = func(idx int, val interface{}) bool {
+			return f(val.(*Value))
+		}
+	case func(int):
+		fn = func(idx int, val interface{}) bool {
+			f(idx)
+			return true
+		}
+	case func(int) bool:
+		fn = func(idx int, val interface{}) bool {
+			return f(idx)
+		}
+	default:
+		panic("invalid range function")
+	}
+	arr.store.Range(fn)
+}
+
+// Sort sorts an array returning a new array that is sorted.
+// by default sort will use dyn.Compare as the comparison operator
+// this may be overridden using the Compare option.
+func (arr *TArray) Sort(options ...SortOption) *TArray {
+	var opts sortOpts
+	opts.compare = func(v1, v2 *Value) int {
+		return v1.Compare(v2)
+	}
+	for _, opt := range options {
+		opt(&opts)
+	}
+	sorter := arraySorter{
+		array: arr.store,
+		opts:  &opts,
+	}
+	sort.Sort(&sorter)
+	arr.store = sorter.array
+	return arr
+}
+
+// String returns a string representation of the Array.
+func (arr *TArray) String() string {
+	var buf bytes.Buffer
+	arr.marshalRFC7951(&buf, arr.orig.module)
+	return buf.String()
+}
+
+func (arr *TArray) marshalRFC7951(buf *bytes.Buffer, module string) error {
+	buf.WriteByte('[')
+	arr.Range(func(i int, v *Value) {
+		v.marshalRFC7951(buf, module)
+		if i < arr.Length()-1 {
+			buf.WriteByte(',')
+		}
+	})
+	buf.WriteByte(']')
+	return nil
 }
