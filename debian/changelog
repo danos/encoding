@@ -1,3 +1,11 @@
+golang-github-danos-encoding (0.9) unstable; urgency=medium
+
+  [ John Southworth ]
+  * Tweak the unmarshal algorithm to be more memory efficient.
+  * Add support for transient arrays and objects
+
+ -- William Ivory <william.ivory@intl.att.com>  Wed, 22 Jul 2020 11:37:04 +0100
+
 golang-github-danos-encoding (0.8) unstable; urgency=medium
 
   [ James Wheatley ]
