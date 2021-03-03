@@ -54,9 +54,11 @@ type misnamedTag struct {
 	X string `rfc7952:"Misnamed"`
 }
 
-type badFormatTag struct {
-	Y string `:"BadFormat"`
-}
+// Re-enable when we move to Bullseye (Debian11) and can re-enable the 'go vet
+// -structtag=false' flag.
+//type badFormatTag struct {
+//	Y string `:"BadFormat"`
+//}
 
 type badCodeTag struct {
 	Z string `rfc7951:" !\"#&'()*+,."`
@@ -84,7 +86,7 @@ var structTagObjectKeyTests = []struct {
 	{miscPlaneTag{"いろはにほへと"}, "いろはにほへと", "色は匂へど"},
 	{emptyTag{"Pour Moi"}, "Pour Moi", "W"},
 	{misnamedTag{"Animal Kingdom"}, "Animal Kingdom", "X"},
-	{badFormatTag{"Orfevre"}, "Orfevre", "Y"},
+	//{badFormatTag{"Orfevre"}, "Orfevre", "Y"},
 	{badCodeTag{"Reliable Man"}, "Reliable Man", "Z"},
 	{percentSlashTag{"brut"}, "brut", "text/html%"},
 	{punctuationTag{"Union Rags"}, "Union Rags", "!#$%&()*+-./:<=>?@[]^_{|}~"},
